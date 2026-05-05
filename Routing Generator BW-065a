@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+
+<meta charset="UTF-8">
+<title>BW-065 Generator</title>
+<style>
+  body { font-family: Arial; }
+  .controls { margin-bottom: 10px; }
+  .grid {
+    display: grid;
+    gap: 2px;
+  }
+  .cell {
+    width: 20px;
+    height: 20px;
+    border: 1px solid #ccc;
+  }
+</style>
+</head>
+
+<body>
+
+<h3>BW-065 Tension-Aware Generator</h3>
+
+<div class="controls">
+  Grid:
+<textarea id="output" style="width:100%;height:200px;margin-top:10px;"></textarea>
+  <input type="number" id="gridSize" value="11" style="width:50px">
+
+Density: <input type="range" id="density" min="0" max="1" step="0.05" value="0.4">
+
+<button onclick="generate()">Generate</button> <button onclick="play()">Play</button> <button onclick="pause()">Pause</button> <button onclick="reset()">Reset</button>
+<button onclick="exportPath()">Export Path</button>
+<button onclick="exportCSV()">Export CSV</button>
+
+</div>
+
+<div id="grid" class="grid"></div>
+
+<script>
+let gridData = [];
+let path = [];
+let step = 0;
+let timer = null;
+
+const crossSteps = [
+  {dx:-0.3, dy:0.3},
+  {dx:-0.3, dy:-0.3},
+  {dx:0.3, dy:-0.3},
+  {dx:0.3, dy:0.3}
+];
+
+const tensionWeight = {
+  cross: 3,
+  grid: 2,
+  variation: 1,
+  void: 0
+};
+
+function generateGrid(size, density){
+  let g = [];
+  for(let i=0;i<size;i++){
+    let row=[];
+    for(let j=0;j<size;j++){
+      let type="void";
+      if(i===j || i+j===size-1){
+        type="cross";
+      }else{
+        let r=Math.random();
+        if(r<density) type="grid";
+        else if(r<density+0.3) type="variation";
+      }
+      row.push(type);
+    }
+    g.push(row);
+  }
+  return g;
+}
+
+function neighbors(i,j,size){
+  return [[i+1,j],[i-1,j],[i,j+1],[i,j-1]]
+    .filter(([x,y])=>x>=0 && y>=0 && x<size && y<size);
+}
+
+function generatePath(g){
+  let visited = new Set();
+  let p = [];
+  let current = [0,0];
+  let size = g.length;
+  let safety = 0;
+
+  while(safety < size*size*2){
+    safety++;
+    let [i,j]=current;
+    let key=i+"-"+j;
+
+    if(!visited.has(key)){
+      visited.add(key);
+
+      if(g[i][j]==="cross"){
+        crossSteps.forEach((s,idx)=>{
+          p.push({
+            x:i+s.dx,
+            y:j+s.dy,
+            type: idx%2===0?"front":"back"
+          });
+        });
+      }
+    }
+
+    let nextList = neighbors(i,j,size)
+      .filter(([x,y])=>!visited.has(x+"-"+y));
+
+    if(nextList.length===0){
+      let found=false;
+      for(let x=0;x<size;x++){
+        for(let y=0;y<size;y++){
+          if(!visited.has(x+"-"+y)){
+            current=[x,y];
+            found=true;
+            break;
+          }
+        }
+        if(found) break;
+      }
+      if(!found) break;
+      continue;
+    }
+
+    nextList.sort((a,b)=>{
+      return tensionWeight[g[b[0]][b[1]]] - tensionWeight[g[a[0]][a[1]]];
+    });
+
+    current = nextList[0];
+  }
+
+  return p;
+}
+
+function draw(){
+  let size = gridData.length;
+  let container = document.getElementById("grid");
+  container.innerHTML="";
+  container.style.gridTemplateColumns = `repeat(${size},20px)`;
+
+  for(let i=0;i<size;i++){
+    for(let j=0;j<size;j++){
+      let div=document.createElement("div");
+      div.className="cell";
+
+      let active = path.findIndex((p,idx)=>
+        Math.floor(p.x)===i &&
+        Math.floor(p.y)===j &&
+        idx<step
+      );
+
+      if(active!==-1){
+        div.style.backgroundColor =
+          path[active].type==="front"?"red":"blue";
+      }else{
+        div.style.backgroundColor="white";
+      }
+
+      container.appendChild(div);
+    }
+  }
+}
+
+function generate(){
+  let size = parseInt(document.getElementById("gridSize").value);
+  let density = parseFloat(document.getElementById("density").value);
+
+  gridData = generateGrid(size, density);
+  path = generatePath(gridData);
+  step = 0;
+  draw();
+}
+
+function play(){
+  if(timer) return;
+  timer = setInterval(()=>{
+    step++;
+    if(step>path.length){
+      clearInterval(timer);
+      timer=null;
+    }
+    draw();
+  },150);
+}
+
+function pause(){
+  clearInterval(timer);
+  timer=null;
+}
+
+function reset(){
+  step=0;
+  draw();
+}
+function exportPath(){
+  if(path.length === 0){
+    alert("No path generated!");
+    return;
+  }
+
+  let text = "";
+  text += "Embroidery Path Export\n";
+  text += "=====================\n\n";
+
+  path.forEach((p, index)=>{
+    text += `${index+1}, `;
+    text += `(${p.x.toFixed(2)}, ${p.y.toFixed(2)}), `;
+    text += `${p.type}\n`;
+  });
+
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "embroidery_path.txt";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+function exportPath(){
+  if(path.length === 0){
+    alert("No path generated!");
+    return;
+  }
+
+  let text = "";
+
+  path.forEach((p, index)=>{
+    text += `${index+1}, (${p.x.toFixed(2)}, ${p.y.toFixed(2)}), ${p.type}\n`;
+  });
+
+  document.getElementById("output").value = text;
+}
+function exportCSV(){
+  if(path.length < 2){
+    alert("Path not enough!");
+    return;
+  }
+
+  let csv = "Step,From_X,From_Y,To_X,To_Y,Stitch_Type,Direction\n";
+
+  for(let i=0; i<path.length-1; i++){
+    const p1 = path[i];
+    const p2 = path[i+1];
+
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+
+    let direction = "";
+    if(dx > 0) direction += "R";
+    if(dx < 0) direction += "L";
+    if(dy > 0) direction += "D";
+    if(dy < 0) direction += "U";
+
+    csv += `${i+1},${p1.x.toFixed(2)},${p1.y.toFixed(2)},${p2.x.toFixed(2)},${p2.y.toFixed(2)},${p2.type},${direction}\n`;
+  }
+
+  document.getElementById("output").value = csv;
+}
+
+</script>
+
+</body>
+</html>
