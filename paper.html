@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Embroidery Grammar Study</title>
+
+<style>
+body {
+  font-family: "Times New Roman", serif;
+  max-width: 900px;
+  margin: auto;
+  line-height: 1.6;
+}
+
+h1, h2 {
+  text-align: center;
+}
+
+.figure {
+  margin: 30px 0;
+  text-align: center;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(9,20px);
+  gap:2px;
+  justify-content:center;
+}
+
+.cell {
+  width:20px;
+  height:20px;
+  border:1px solid #ccc;
+}
+
+.caption {
+  font-size: 14px;
+  margin-top:10px;
+}
+
+.anchor { background:red; }
+.flow { background:blue; }
+.release { background:green; }
+
+.abstract {
+  border:1px solid #000;
+  padding:15px;
+  margin:20px 0;
+}
+</style>
+
+</head>
+
+<body>
+
+<h1>Embroidery Grammar: From Modular to Network Systems</h1>
+
+<div class="abstract">
+<b>Abstract.</b> This study investigates the structural transformation 
+of blackwork embroidery from modular systems to network-based configurations. 
+Using BW-046, BW-065, and WWB-082 as progressive case studies, 
+we demonstrate a shift from simple geometric repetition to layered 
+structural logic. The embroidery process is analyzed through three 
+dimensions: structure, path, and tension. The results reveal that 
+WWB-082 represents a network-based embroidery system with distributed 
+tension and hierarchical execution.
+</div>
+
+<h2>Case Study: WWB-082</h2>
+
+<div class="figure">
+<div class="grid" id="structure"></div>
+<div class="caption">
+Figure 1. Structure diagram of WWB-082 showing cross anchors, square frames, and inner micro-cross elements.
+</div>
+</div>
+
+<div class="figure">
+<div class="grid" id="path"></div>
+<div class="caption">
+Figure 2. Path execution sequence illustrating phase-based embroidery: cross construction, frame expansion, and inner completion.
+</div>
+</div>
+
+<div class="figure">
+<div class="grid" id="tension"></div>
+<div class="caption">
+Figure 3. Tension field visualization: anchor (red), flow (blue), and release (green) zones.
+</div>
+</div>
+
+<h2>Comparison</h2>
+
+<p>
+BW-046 represents a basic modular system. BW-065 extends into a structured 
+combinational system, while WWB-082 evolves into a network-based system 
+with layered execution and distributed tension fields.
+</p>
+
+<h2>Conclusion</h2>
+
+<p>
+WWB-082 demonstrates a fundamental shift in embroidery logic, where 
+structure precedes path optimization, and tension is distributed across 
+multiple layers. This confirms the emergence of embroidery as a 
+formalizable computational system.
+</p>
+
+<script>
+function build(id, type){
+  const g=document.getElementById(id);
+
+  for(let i=0;i<9;i++){
+    for(let j=0;j<9;j++){
+      let d=document.createElement("div");
+      d.className="cell";
+
+      if(type==="structure"){
+        if(i===j || i+j===8) d.classList.add("anchor");
+        else if(i%2===0 && j%2===0) d.classList.add("flow");
+        else d.classList.add("release");
+      }
+
+      if(type==="path"){
+        if(i===4 || j===4) d.classList.add("anchor");
+        else if(i>=2 && i<=6 && j>=2 && j<=6) d.classList.add("flow");
+      }
+
+      if(type==="tension"){
+        if(i===j || i+j===8) d.classList.add("anchor");
+        else if(i%3===0 || j%3===0) d.classList.add("flow");
+        else d.classList.add("release");
+      }
+
+      g.appendChild(d);
+    }
+  }
+}
+
+build("structure","structure");
+build("path","path");
+build("tension","tension");
+</script>
+
+</body>
+</html>
