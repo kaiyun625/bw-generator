@@ -1,7 +1,126 @@
-kaiyun0625
-Generate
-Play
-Pause
-Reset
-Export CSV
-Evaluate
+<!DOCTYPE html>
+
+<html>
+<head>
+<meta charset="UTF-8">
+<title>BW Generator</title>
+
+<style>
+body { font-family: Arial; text-align:center; }
+.grid {
+  display:grid;
+  justify-content:center;
+  gap:2px;
+  margin-top:20px;
+}
+.cell {
+  width:20px;
+  height:20px;
+  border:1px solid #ccc;
+}
+button { margin:5px; padding:5px 10px; }
+textarea {
+  width:90%;
+  height:150px;
+  margin-top:10px;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>BW Generator</h2>
+
+<button onclick="generate()">Generate</button> <button onclick="play()">Play</button> <button onclick="pause()">Pause</button> <button onclick="reset()">Reset</button> <button onclick="exportCSV()">Export CSV</button> <button onclick="evaluatePath()">Evaluate</button>
+
+<div id="grid" class="grid"></div>
+<textarea id="output"></textarea>
+
+<script>
+
+let size = 9;
+let path = [];
+let step = 0;
+let timer = null;
+
+function generate(){
+  path = [];
+
+  for(let i=2;i<=6;i++){
+    path.push({x:4,y:i,type:"front"});
+    path.push({x:4,y:i,type:"back"});
+  }
+
+  for(let j=2;j<=6;j++){
+    path.push({x:j,y:4,type:"front"});
+    path.push({x:j,y:4,type:"back"});
+  }
+
+  step = 0;
+  draw();
+}
+
+function draw(){
+  const g = document.getElementById("grid");
+  g.innerHTML="";
+  g.style.gridTemplateColumns = `repeat(${size},20px)`;
+
+  for(let i=0;i<size;i++){
+    for(let j=0;j<size;j++){
+      let d=document.createElement("div");
+      d.className="cell";
+
+      let active = path.findIndex((p,idx)=>
+        p.x===i && p.y===j && idx<step
+      );
+
+      if(active !== -1){
+        d.style.backgroundColor =
+          path[active].type==="front" ? "red" : "blue";
+      }
+
+      g.appendChild(d);
+    }
+  }
+}
+
+function play(){
+  if(timer) return;
+  timer=setInterval(()=>{
+    step++;
+    if(step>path.length){
+      clearInterval(timer);
+      timer=null;
+    }
+    draw();
+  },120);
+}
+
+function pause(){
+  clearInterval(timer);
+  timer=null;
+}
+
+function reset(){
+  step=0;
+  draw();
+}
+
+function exportCSV(){
+  let csv="Step,X,Y,Type\n";
+  path.forEach((p,i)=>{
+    csv+=`${i+1},${p.x},${p.y},${p.type}\n`;
+  });
+  document.getElementById("output").value=csv;
+}
+
+function evaluatePath(){
+  document.getElementById("output").value=
+  "Path length: " + path.length;
+}
+
+</script>
+
+</body>
+</html>
