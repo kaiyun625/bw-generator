@@ -3,123 +3,161 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>BW Generator</title>
-
+<title>BW-065 Generator</title>
 <style>
 body { font-family: Arial; text-align:center; }
+.controls { margin: 10px; }
 .grid {
-  display:grid;
-  justify-content:center;
-  gap:2px;
-  margin-top:20px;
+  display: grid;
+  justify-content: center;
+  gap: 2px;
 }
 .cell {
-  width:20px;
-  height:20px;
-  border:1px solid #ccc;
+  width: 20px;
+  height: 20px;
+  border: 1px solid #ccc;
 }
-button { margin:5px; padding:5px 10px; }
 textarea {
-  width:90%;
-  height:150px;
-  margin-top:10px;
+  width: 90%;
+  height: 150px;
+  margin-top: 10px;
+}
+button {
+  margin: 3px;
+  padding: 5px 10px;
 }
 </style>
-
 </head>
 
 <body>
 
-<h2>BW Generator</h2>
+<h2>BW-065 Tension-Aware Generator</h2>
+
+<div class="controls">
+Grid: <input type="number" id="gridSize" value="11" style="width:50px">
+Density: <input type="range" id="density" min="0" max="1" step="0.05" value="0.4">
+
+<br><br>
 
 <button onclick="generate()">Generate</button> <button onclick="play()">Play</button> <button onclick="pause()">Pause</button> <button onclick="reset()">Reset</button> <button onclick="exportCSV()">Export CSV</button> <button onclick="evaluatePath()">Evaluate</button>
+
+</div>
 
 <div id="grid" class="grid"></div>
 <textarea id="output"></textarea>
 
 <script>
+let gridData=[], path=[], step=0, timer=null;
 
-let size = 9;
-let path = [];
-let step = 0;
-let timer = null;
+const crossSteps=[
+{dx:-0.3,dy:0.3},{dx:-0.3,dy:-0.3},
+{dx:0.3,dy:-0.3},{dx:0.3,dy:0.3}
+];
 
 function generate(){
-  path = [];
+let size=parseInt(document.getElementById("gridSize").value);
+let density=parseFloat(document.getElementById("density").value);
 
-  for(let i=2;i<=6;i++){
-    path.push({x:4,y:i,type:"front"});
-    path.push({x:4,y:i,type:"back"});
-  }
+gridData=[];
+for(let i=0;i<size;i++){
+let row=[];
+for(let j=0;j<size;j++){
+let type="void";
+if(i===j||i+j===size-1) type="cross";
+else{
+let r=Math.random();
+if(r<density) type="grid";
+}
+row.push(type);
+}
+gridData.push(row);
+}
 
-  for(let j=2;j<=6;j++){
-    path.push({x:j,y:4,type:"front"});
-    path.push({x:j,y:4,type:"back"});
-  }
+path=[];
+for(let i=0;i<size;i++){
+for(let j=0;j<size;j++){
+if(gridData[i][j]==="cross"){
+crossSteps.forEach((s,idx)=>{
+path.push({
+x:i+s.dx,y:j+s.dy,
+type: idx%2===0?"front":"back"
+});
+});
+}
+}
+}
 
-  step = 0;
-  draw();
+step=0;
+draw();
 }
 
 function draw(){
-  const g = document.getElementById("grid");
-  g.innerHTML="";
-  g.style.gridTemplateColumns = `repeat(${size},20px)`;
+let size=gridData.length;
+let g=document.getElementById("grid");
+g.innerHTML="";
+g.style.gridTemplateColumns=`repeat(${size},20px)`;
 
-  for(let i=0;i<size;i++){
-    for(let j=0;j<size;j++){
-      let d=document.createElement("div");
-      d.className="cell";
+for(let i=0;i<size;i++){
+for(let j=0;j<size;j++){
+let d=document.createElement("div");
+d.className="cell";
 
-      let active = path.findIndex((p,idx)=>
-        p.x===i && p.y===j && idx<step
-      );
+let active=path.findIndex((p,idx)=>
+Math.floor(p.x)===i &&
+Math.floor(p.y)===j &&
+idx<step
+);
 
-      if(active !== -1){
-        d.style.backgroundColor =
-          path[active].type==="front" ? "red" : "blue";
-      }
+if(active!==-1){
+d.style.backgroundColor=
+path[active].type==="front"?"red":"blue";
+}
 
-      g.appendChild(d);
-    }
-  }
+g.appendChild(d);
+}
+}
 }
 
 function play(){
-  if(timer) return;
-  timer=setInterval(()=>{
-    step++;
-    if(step>path.length){
-      clearInterval(timer);
-      timer=null;
-    }
-    draw();
-  },120);
+if(timer) return;
+timer=setInterval(()=>{
+step++;
+if(step>path.length){
+clearInterval(timer); timer=null;
+}
+draw();
+},150);
 }
 
 function pause(){
-  clearInterval(timer);
-  timer=null;
+clearInterval(timer); timer=null;
 }
 
 function reset(){
-  step=0;
-  draw();
+step=0; draw();
 }
 
 function exportCSV(){
-  let csv="Step,X,Y,Type\n";
-  path.forEach((p,i)=>{
-    csv+=`${i+1},${p.x},${p.y},${p.type}\n`;
-  });
-  document.getElementById("output").value=csv;
+if(path.length<2){alert("no data");return;}
+let csv="Step,From_X,From_Y,To_X,To_Y,Type\n";
+for(let i=0;i<path.length-1;i++){
+let p1=path[i],p2=path[i+1];
+csv+=`${i+1},${p1.x},${p1.y},${p2.x},${p2.y},${p2.type}\n`;
+}
+document.getElementById("output").value=csv;
 }
 
 function evaluatePath(){
-  document.getElementById("output").value=
-  "Path length: " + path.length;
+let length=0, back=0;
+for(let i=0;i<path.length-1;i++){
+let dx=path[i+1].x-path[i].x;
+let dy=path[i+1].y-path[i].y;
+length+=Math.sqrt(dx*dx+dy*dy);
+if(path[i+1].type==="back") back++;
 }
-
+document.getElementById("output").value=
+`Length: ${length.toFixed(2)}\nBack: ${back}`;
+}
 </script>
 
 </body>
